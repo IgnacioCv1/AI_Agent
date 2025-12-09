@@ -73,30 +73,40 @@ def main():
     
     model = "gemini-2.5-flash"
     contents = messages
-    list_for_later = []
+    count = 0
     
-    response_obj = client.models.generate_content(model=model, contents = contents,
-    config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt))
-    '''
-    if args.verbose == True:
-        print(f"User prompt: {contents}\nPrompt tokens: {response_obj.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response_obj.usage_metadata.candidates_token_count}\nResponse:")
+    while count < 20:
         
-    if response_obj.text:
-        print(f"{response_obj.text}")
-    '''    
-    if response_obj.function_calls:
-        for item in response_obj.function_calls:
+        response_obj = client.models.generate_content(model=model, contents = contents,
+        config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt))
+        
+        for cand in response_obj.candidates:
+            messages.append(cand)
+        
+        
+        if not response_obj.function_calls:
+            print("I PRINTED RESPONSE_OBJ.TEXT:")
+            print(response_obj.text)
+            break
+        
+        
+        for call in response_obj.function_calls:
             
-            print(f"Calling function: {item.name}({item.args})")
-            call_func_result = call_function(item)
+            #print(f"Calling function: {call.name}({call.args})")
+            call_func_result = call_function(call)
+            messages.append(call_func_result)
             
             if call_func_result.parts[0].function_response.response:
-                list_for_later.append(call_func_result.parts[0].function_response.response)
+                
                 if args.verbose:
                     print(f"-> {call_func_result.parts[0].function_response.response}")
             else:
                 raise Exception("Something Went Wrong")
+            
+            
+        count += 1
+        
+    
 
 if __name__ == "__main__":
     main()
